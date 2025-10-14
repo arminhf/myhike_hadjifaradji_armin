@@ -1,10 +1,16 @@
-class SiteNavbar extends HTMLElement {
-    connectedCallback() {
-        this.renderNavbar();
-    }
+// Import specific functions from the Firebase Auth SDK
+import { onAuthStateChanged } from "firebase/auth";
 
-    renderNavbar() {
-        this.innerHTML = `
+import { auth } from "/src/firebaseConfig.js";
+import { logoutUser } from "/src/authentication.js";
+class SiteNavbar extends HTMLElement {
+  connectedCallback() {
+    this.renderNavbar();
+    this.renderAuthControls();
+  }
+
+  renderNavbar() {
+    this.innerHTML = `
             <!-- Navbar: single source of truth -->
             <nav class="navbar navbar-expand-lg navbar-light bg-info">
                 <div class="container-fluid">
@@ -36,7 +42,47 @@ class SiteNavbar extends HTMLElement {
                 </div>
             </nav>
         `;
-    }
+  }
+
+  renderAuthControls() {
+    const authControls = this.querySelector("#authControls");
+    let currentAuthState = null; // Track current state to prevent unnecessary updates
+
+    // Initialize with invisible placeholder to maintain layout space
+    authControls.innerHTML = `
+            <div class="btn btn-outline-light" style="visibility: hidden; min-width: 80px;">Log out</div>
+        `;
+
+    onAuthStateChanged(auth, (user) => {
+      const newState = user ? "authenticated" : "unauthenticated";
+
+      // Only update if state actually changed
+      if (currentAuthState === newState) {
+        return;
+      }
+      currentAuthState = newState;
+
+      let updatedAuthControl;
+      if (user) {
+        updatedAuthControl = `
+                    <button class="btn btn-outline-light" id="signOutBtn" type="button" style="min-width: 80px;">Log out</button>
+                `;
+      } else {
+        updatedAuthControl = `
+                    <a class="btn btn-outline-light" id="loginBtn" href="/login.html" style="min-width: 80px;">Log in</a>
+                `;
+      }
+
+      authControls.innerHTML = updatedAuthControl;
+
+      // Add event listeners after content is set
+      if (user) {
+        const signOutBtn = authControls.querySelector("#signOutBtn");
+        signOutBtn?.addEventListener("click", logoutUser);
+      }
+    });
+  }
 }
 
-customElements.define('site-navbar', SiteNavbar);
+customElements.define("site-navbar", SiteNavbar);
+
